@@ -40,6 +40,8 @@ class GooseDetector:
         self.save_detections = save_detections
         self.detection_count = 0
         self.running = True
+        self.last_status_time = 0
+        self.goose_detected = False
         
         # Create directory for saved detections
         if self.save_detections:
@@ -127,6 +129,16 @@ class GooseDetector:
         print(f"Detection saved: {filepath}")
         self.detection_count += 1
     
+    def print_status(self):
+        """Print status message every 2 seconds"""
+        current_time = time.time()
+        if current_time - self.last_status_time >= 2:
+            if self.goose_detected:
+                print("\033[91mGOOSE DETECTED\033[0m")  # Red text
+            else:
+                print("\033[92mNO GEESE\033[0m")  # Green text
+            self.last_status_time = current_time
+    
     def run(self):
         """Run the goose detection loop"""
         # Open webcam
@@ -179,10 +191,11 @@ class GooseDetector:
             result = results[0]
             detections = result.boxes.data.cpu().numpy()
             
-            goose_detected = False
-            for detection in detections:
-                goose_detected = True
-                break
+            # Update goose detection status
+            self.goose_detected = len(detections) > 0
+            
+            # Print status every 2 seconds
+            self.print_status()
             
             # Get the rendered frame with detections
             annotated_frame = result.plot()
@@ -199,7 +212,7 @@ class GooseDetector:
             )
             
             # Trigger alert if goose detected
-            if goose_detected:
+            if self.goose_detected:
                 self.trigger_alert()
                 self.save_detection_image(annotated_frame)
             
